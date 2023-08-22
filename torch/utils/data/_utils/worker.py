@@ -206,13 +206,22 @@ def _generate_state(base_seed, worker_id):
         state.append(data_val)
     return state
 
+def _write_kernel_stack(pid):
+    import glob
+    with open("/tmp/stack_%s.log" % pid, "w") as f:
+        for ff in glob.glob("/proc/%s/task/*/stack"%pid):
+            c = ""
+            with open(ff, "r") as f2:
+                c = f2.read()
+            f.write("========= %s ========\n" % pid)
+            f.write(ff + "\n")
+            f.write(c)
+            f.write("\n")
+
 def _sleep_here():
     f1 = '/tmp/sleep'
-    f2 = '/tmp/continue'
     printed = False
     while True:
-        if os.path.exists(f2):
-            break
         if not os.path.exists(f1):
             break
         time.sleep(1)
@@ -231,6 +240,7 @@ def _worker_loop(dataset_kind, dataset, index_queue, data_queue, done_event,
         # https://docs.python.org/3/library/signal.html#execution-of-python-signal-handlers
         signal_handling._set_worker_signal_handlers()
 
+        _write_kernel_stack(os.getpid())
         _sleep_here()
 
         torch.set_num_threads(1)
