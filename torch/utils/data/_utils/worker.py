@@ -208,16 +208,13 @@ def _generate_state(base_seed, worker_id):
 
 def _write_kernel_stack(pid, mark):
     import glob
-    with open("/tmp/stack_%s.log" % pid, "a") as f:
-        for ff in glob.glob("/proc/%s/task/*/stack"%pid):
-            c = ""
-            with open(ff, "r") as f2:
-                c = f2.read()
-            f.write("========= %s ========\n" % pid)
-            f.write(ff + "\n")
-            f.write(c)
-            f.write("\n")
-        f.write("--------------- End of %s-----------------\n"%mark)
+    gbs = glob.glob("/proc/%s/task/*/stack"%pid)
+    ngbs = len(gbs)
+    with open(f"/tmp/stack_{pid}.log", "a") as f:
+        f.write(f"--------------- start-{ngbs}:{mark}------------------\n")
+        f.write("\n".join(gbs))
+        f.write("\n")
+        f.write(f"--------------- end-{ngbs}:{mark}------------------\n")
 
 def _sleep_here(flag):
     f1 = '/tmp/'+flag
@@ -226,6 +223,19 @@ def _sleep_here(flag):
         if not os.path.exists(f1):
             break
         time.sleep(1)
+
+def _sleep_if_many_threads():
+    import glob
+    pid = os.getpid()
+    gbs = glob.glob("/proc/%s/task/*/stack"%pid)
+    ngbs = len(gbs)
+
+    if ngbs > 1000:
+        flag = "sleepifmanythreads-%s" % pid
+        with open("/tmp/" + flag, "w") as f:
+            f.write(pid)
+            f.write("\n")
+        _sleep_here(flag)
 
 def _worker_loop(dataset_kind, dataset, index_queue, data_queue, done_event,
                  auto_collation, collate_fn, drop_last, base_seed, init_fn, worker_id,
@@ -243,11 +253,13 @@ def _worker_loop(dataset_kind, dataset, index_queue, data_queue, done_event,
 
         _write_kernel_stack(os.getpid(), "before-set-num-threads-1")
         _sleep_here("sleep1")
+        _sleep_if_many_threads()
 
         torch.set_num_threads(1)
 
-        _sleep_here("sleep2")
         _write_kernel_stack(os.getpid(), "after-set-num-threads-1")
+        _sleep_here("sleep2")
+        _sleep_if_many_threads()
 
         seed = base_seed + worker_id
         random.seed(seed)
