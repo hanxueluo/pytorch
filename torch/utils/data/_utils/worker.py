@@ -206,9 +206,9 @@ def _generate_state(base_seed, worker_id):
         state.append(data_val)
     return state
 
-def _write_kernel_stack(pid):
+def _write_kernel_stack(pid, mark):
     import glob
-    with open("/tmp/stack_%s.log" % pid, "w") as f:
+    with open("/tmp/stack_%s.log" % pid, "a") as f:
         for ff in glob.glob("/proc/%s/task/*/stack"%pid):
             c = ""
             with open(ff, "r") as f2:
@@ -217,9 +217,10 @@ def _write_kernel_stack(pid):
             f.write(ff + "\n")
             f.write(c)
             f.write("\n")
+        f.write("--------------- End of %s-----------------\n"%mark)
 
-def _sleep_here():
-    f1 = '/tmp/sleep'
+def _sleep_here(flag):
+    f1 = '/tmp/'+flag
     printed = False
     while True:
         if not os.path.exists(f1):
@@ -240,10 +241,14 @@ def _worker_loop(dataset_kind, dataset, index_queue, data_queue, done_event,
         # https://docs.python.org/3/library/signal.html#execution-of-python-signal-handlers
         signal_handling._set_worker_signal_handlers()
 
-        _write_kernel_stack(os.getpid())
-        _sleep_here()
+        _write_kernel_stack(os.getpid(), "before-set-num-threads-1")
+        _sleep_here("sleep1")
 
         torch.set_num_threads(1)
+
+        _sleep_here("sleep2")
+        _write_kernel_stack(os.getpid(), "after-set-num-threads-1")
+
         seed = base_seed + worker_id
         random.seed(seed)
         torch.manual_seed(seed)
