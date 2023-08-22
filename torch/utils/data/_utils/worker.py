@@ -7,6 +7,7 @@ static methods.
 import torch
 import random
 import os
+import time
 import queue
 from dataclasses import dataclass
 from torch._utils import ExceptionWrapper
@@ -205,6 +206,17 @@ def _generate_state(base_seed, worker_id):
         state.append(data_val)
     return state
 
+def _sleep_here():
+    f1 = '/tmp/sleep'
+    f2 = '/tmp/continue'
+    printed = False
+    while True:
+        if os.path.exists(f2):
+            break
+        if not os.path.exists(f1):
+            break
+        time.sleep(1)
+
 def _worker_loop(dataset_kind, dataset, index_queue, data_queue, done_event,
                  auto_collation, collate_fn, drop_last, base_seed, init_fn, worker_id,
                  num_workers, persistent_workers, shared_seed):
@@ -218,6 +230,8 @@ def _worker_loop(dataset_kind, dataset, index_queue, data_queue, done_event,
         # again.
         # https://docs.python.org/3/library/signal.html#execution-of-python-signal-handlers
         signal_handling._set_worker_signal_handlers()
+
+        _sleep_here()
 
         torch.set_num_threads(1)
         seed = base_seed + worker_id
